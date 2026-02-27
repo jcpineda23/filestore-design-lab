@@ -1,0 +1,383 @@
+openapi: 3.0.3
+info:
+  title: FileStore Design Lab API
+  version: 1.0.0-draft
+  description: |
+    Milestone A design contract for a learning-focused file storage system.
+    This specification is intentionally implementation-agnostic and will be frozen
+    before Milestone B coding.
+servers:
+  - url: http://localhost:8080
+    description: Local development
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Authenticate user and return JWT
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/files:
+    post:
+      tags: [Files]
+      summary: Upload a file
+      description: |
+        Uploads a file using multipart form data. Supports idempotent submission
+        with the `Idempotency-Key` header.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/XCorrelationId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: File accepted and stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileMetadata'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Idempotency conflict or invalid file state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: File too large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags: [Files]
+      summary: List current user's files
+      parameters:
+        - $ref: '#/components/parameters/XCorrelationId'
+      responses:
+        '200':
+          description: User file list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FileMetadata'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/files/{fileId}/download:
+    get:
+      tags: [Files]
+      summary: Download file content
+      parameters:
+        - $ref: '#/components/parameters/FileId'
+        - $ref: '#/components/parameters/XCorrelationId'
+      responses:
+        '200':
+          description: File stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: File state does not allow download
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/files/{fileId}:
+    delete:
+      tags: [Files]
+      summary: Delete a file owned by current user
+      parameters:
+        - $ref: '#/components/parameters/FileId'
+        - $ref: '#/components/parameters/XCorrelationId'
+      responses:
+        '204':
+          description: File deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: File already deleting or invalid state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/events/stream:
+    get:
+      tags: [Events]
+      summary: Server-Sent Events stream for current user
+      description: |
+        Streams user-scoped events. Clients may reconnect using `Last-Event-ID`.
+      parameters:
+        - in: header
+          name: Last-Event-ID
+          schema:
+            type: string
+          required: false
+          description: Last processed event id for best-effort replay.
+      responses:
+        '200':
+          description: SSE stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                example: |
+                  id: 01JXYZABC123
+                  event: file.upload.completed
+                  data: {"eventId":"01JXYZABC123"}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/ws:
+    get:
+      tags: [Events]
+      summary: WebSocket upgrade endpoint
+      description: |
+        Upgrades to a WebSocket connection for authenticated presence and future
+        interactive user signals.
+      parameters:
+        - in: header
+          name: Sec-WebSocket-Protocol
+          required: false
+          schema:
+            type: string
+          description: Optional bearer token subprotocol strategy.
+      responses:
+        '101':
+          description: Switching Protocols
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    FileId:
+      in: path
+      name: fileId
+      required: true
+      schema:
+        type: string
+        example: fil_01JXYZABC123
+    IdempotencyKey:
+      in: header
+      name: Idempotency-Key
+      required: false
+      schema:
+        type: string
+        maxLength: 128
+      description: Required for safe retries of upload requests.
+    XCorrelationId:
+      in: header
+      name: X-Correlation-Id
+      required: false
+      schema:
+        type: string
+        maxLength: 64
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Authentication required or invalid token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Access denied
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+
+    AuthResponse:
+      type: object
+      required: [userId, token, expiresAt]
+      properties:
+        userId:
+          type: string
+          example: usr_01JXYZABC123
+        token:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+
+    FileMetadata:
+      type: object
+      required:
+        - id
+        - ownerId
+        - fileName
+        - contentType
+        - sizeBytes
+        - status
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          example: fil_01JXYZABC123
+        ownerId:
+          type: string
+          example: usr_01JXYZABC123
+        fileName:
+          type: string
+        contentType:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+          minimum: 0
+        checksum:
+          type: string
+          nullable: true
+          example: sha256:a25c3f...
+        status:
+          type: string
+          enum: [UPLOADING, READY, FAILED, DELETING, DELETE_FAILED]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, correlationId]
+          properties:
+            code:
+              type: string
+              enum:
+                - UNAUTHORIZED
+                - FORBIDDEN
+                - FILE_NOT_FOUND
+                - INVALID_FILE_STATE
+                - MAX_SIZE_EXCEEDED
+                - IDEMPOTENCY_CONFLICT
+                - STORAGE_UNAVAILABLE
+                - INTERNAL_ERROR
+            message:
+              type: string
+            correlationId:
+              type: string
