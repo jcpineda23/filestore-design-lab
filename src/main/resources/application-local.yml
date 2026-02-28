@@ -1,0 +1,17 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/filestore}
+    username: ${DB_USERNAME:filestore}
+    password: ${DB_PASSWORD:filestore}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    baseline-on-migrate: true
+
+logging:
+  level:
+    org.springframework: info
+    org.flywaydb: info

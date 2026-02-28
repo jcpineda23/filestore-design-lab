@@ -3,12 +3,14 @@
 A learning-focused Java project to practice core system design concepts by building a file storage application with authentication, REST APIs, SSE, and WebSocket support.
 
 ## Current Phase
-Design and planning only.
+Milestone B in progress.
 
 - Milestone A: system design blueprint (requirements, APIs, event contracts, DB schema, diagrams).
-- Milestone B: auth + metadata implementation plan (tickets and sequence).
+- Milestone B: auth + metadata implementation.
+  - B1 complete: Spring Boot bootstrap + profiles + health endpoint + Docker Compose.
+  - B2 complete: Flyway migration for `users`, `files`, `idempotency_keys`.
 
-No application features are implemented yet.
+Application features beyond bootstrap/migrations are not implemented yet.
 
 ## Repository Structure
 
@@ -28,6 +30,29 @@ No application features are implemented yet.
 - MinIO (S3-compatible)
 - Docker Compose
 
+## Run Locally
+
+1. Start PostgreSQL:
+```bash
+docker compose up -d
+```
+
+2. Run app:
+```bash
+./mvnw spring-boot:run
+```
+
+If Maven Wrapper is not present yet, use:
+```bash
+mvn spring-boot:run
+```
+
+3. Health check:
+```bash
+curl http://localhost:8080/api/v1/health
+curl http://localhost:8080/actuator/health
+```
+
 ## Next Step
 
-Review Milestone A artifacts and approve implementation of Milestone A deliverables.
+Implement B3-B5 (auth domain, JWT security, register/login endpoints).
