@@ -31,7 +31,7 @@ erDiagram
     IDEMPOTENCY_KEYS {
       uuid id PK
       uuid owner_id FK
-      varchar key
+      varchar idempotency_key
       varchar request_hash
       int response_code
       text response_body
@@ -43,5 +43,5 @@ erDiagram
 
 1. `files.owner_id` scopes every file to a single user.
 2. `files.object_key` is unique and maps metadata to object storage.
-3. `idempotency_keys` is scoped by `(owner_id, key)`.
+3. `idempotency_keys` is scoped by `(owner_id, idempotency_key)`.
 4. `deleted_at` enables soft deletes and safe recovery/audit.

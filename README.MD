@@ -39,12 +39,12 @@ docker compose up -d
 
 2. Run app:
 ```bash
-./mvnw spring-boot:run
+DB_URL=jdbc:postgresql://localhost:5433/filestore ./mvnw spring-boot:run
 ```
 
 If Maven Wrapper is not present yet, use:
 ```bash
-mvn spring-boot:run
+DB_URL=jdbc:postgresql://localhost:5433/filestore mvn spring-boot:run
 ```
 
 3. Health check:

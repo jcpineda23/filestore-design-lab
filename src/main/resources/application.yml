@@ -27,3 +27,8 @@ management:
 
 server:
   port: 8080
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:change-me-change-me-change-me-change-me}
+    expiration-seconds: ${JWT_EXPIRATION_SECONDS:3600}
