@@ -65,6 +65,75 @@ class FileMetadataControllerIntegrationTest {
     }
 
     @Test
+    void createIsReplayedForSameIdempotencyKeyAndSamePayload() throws Exception {
+        String token = registerAndLogin("idempotent@example.com", "secret123");
+        String key = "idem-create-1";
+
+        MockMultipartFile file = new MockMultipartFile(
+            "file",
+            "same.txt",
+            MediaType.TEXT_PLAIN_VALUE,
+            "same-content".getBytes()
+        );
+
+        MvcResult first = mockMvc.perform(multipart("/api/v1/files")
+                .file(file)
+                .header("Authorization", "Bearer " + token)
+                .header("Idempotency-Key", key))
+            .andExpect(status().isCreated())
+            .andReturn();
+
+        MvcResult second = mockMvc.perform(multipart("/api/v1/files")
+                .file(file)
+                .header("Authorization", "Bearer " + token)
+                .header("Idempotency-Key", key))
+            .andExpect(status().isCreated())
+            .andReturn();
+
+        String firstId = objectMapper.readTree(first.getResponse().getContentAsString()).get("id").asText();
+        String secondId = objectMapper.readTree(second.getResponse().getContentAsString()).get("id").asText();
+
+        org.assertj.core.api.Assertions.assertThat(firstId).isEqualTo(secondId);
+
+        mockMvc.perform(get("/api/v1/files")
+                .header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items.length()").value(1));
+    }
+
+    @Test
+    void createReturnsConflictForSameIdempotencyKeyWithDifferentPayload() throws Exception {
+        String token = registerAndLogin("idempotent-conflict@example.com", "secret123");
+        String key = "idem-create-2";
+
+        MockMultipartFile file1 = new MockMultipartFile(
+            "file",
+            "first.txt",
+            MediaType.TEXT_PLAIN_VALUE,
+            "first-content".getBytes()
+        );
+        MockMultipartFile file2 = new MockMultipartFile(
+            "file",
+            "second.txt",
+            MediaType.TEXT_PLAIN_VALUE,
+            "second-content".getBytes()
+        );
+
+        mockMvc.perform(multipart("/api/v1/files")
+                .file(file1)
+                .header("Authorization", "Bearer " + token)
+                .header("Idempotency-Key", key))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(multipart("/api/v1/files")
+                .file(file2)
+                .header("Authorization", "Bearer " + token)
+                .header("Idempotency-Key", key))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.error.code").value("IDEMPOTENCY_CONFLICT"));
+    }
+
+    @Test
     void ownerCanDeleteOwnFile() throws Exception {
         String token = registerAndLogin("delete-owner@example.com", "secret123");
 

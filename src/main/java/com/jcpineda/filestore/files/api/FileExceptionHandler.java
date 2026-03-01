@@ -6,6 +6,8 @@ import com.jcpineda.filestore.files.service.FileAccessDeniedException;
 import com.jcpineda.filestore.files.service.FileNotFoundException;
 import com.jcpineda.filestore.files.service.InvalidFileStateException;
 import com.jcpineda.filestore.files.service.InvalidFileUploadException;
+import com.jcpineda.filestore.idempotency.service.IdempotencyConflictException;
+import com.jcpineda.filestore.idempotency.service.IdempotencyKeyTooLongException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -35,6 +37,20 @@ public class FileExceptionHandler {
 
     @ExceptionHandler(InvalidFileUploadException.class)
     public ResponseEntity<ApiErrorResponse> handleInvalidUpload(HttpServletRequest request, InvalidFileUploadException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(ApiErrorResponse.of("VALIDATION_ERROR", ex.getMessage(), CorrelationIdResolver.resolve(request)));
+    }
+
+    @ExceptionHandler(IdempotencyConflictException.class)
+    public ResponseEntity<ApiErrorResponse> handleIdempotencyConflict(HttpServletRequest request,
+                                                                      IdempotencyConflictException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(ApiErrorResponse.of("IDEMPOTENCY_CONFLICT", ex.getMessage(), CorrelationIdResolver.resolve(request)));
+    }
+
+    @ExceptionHandler(IdempotencyKeyTooLongException.class)
+    public ResponseEntity<ApiErrorResponse> handleIdempotencyKeyLength(HttpServletRequest request,
+                                                                       IdempotencyKeyTooLongException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
             .body(ApiErrorResponse.of("VALIDATION_ERROR", ex.getMessage(), CorrelationIdResolver.resolve(request)));
     }
