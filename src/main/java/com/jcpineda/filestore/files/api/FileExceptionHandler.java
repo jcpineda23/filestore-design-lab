@@ -6,6 +6,7 @@ import com.jcpineda.filestore.files.service.FileAccessDeniedException;
 import com.jcpineda.filestore.files.service.FileNotFoundException;
 import com.jcpineda.filestore.files.service.InvalidFileStateException;
 import com.jcpineda.filestore.files.service.InvalidFileUploadException;
+import com.jcpineda.filestore.files.service.StorageUnavailableException;
 import com.jcpineda.filestore.idempotency.service.IdempotencyConflictException;
 import com.jcpineda.filestore.idempotency.service.IdempotencyKeyTooLongException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -39,6 +40,13 @@ public class FileExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleInvalidUpload(HttpServletRequest request, InvalidFileUploadException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
             .body(ApiErrorResponse.of("VALIDATION_ERROR", ex.getMessage(), CorrelationIdResolver.resolve(request)));
+    }
+
+    @ExceptionHandler(StorageUnavailableException.class)
+    public ResponseEntity<ApiErrorResponse> handleStorageUnavailable(HttpServletRequest request,
+                                                                     StorageUnavailableException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+            .body(ApiErrorResponse.of("STORAGE_UNAVAILABLE", ex.getMessage(), CorrelationIdResolver.resolve(request)));
     }
 
     @ExceptionHandler(IdempotencyConflictException.class)

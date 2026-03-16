@@ -1,13 +1,19 @@
 package com.jcpineda.filestore.files.api;
 
+import com.jcpineda.filestore.common.api.CorrelationIdResolver;
 import com.jcpineda.filestore.files.domain.FileEntity;
 import com.jcpineda.filestore.files.service.FileCreateRequestHasher;
+import com.jcpineda.filestore.files.service.FileDownload;
 import com.jcpineda.filestore.files.service.FileMetadataService;
 import com.jcpineda.filestore.idempotency.service.IdempotencyService;
 import com.jcpineda.filestore.security.JwtPrincipal;
+import jakarta.servlet.http.HttpServletRequest;
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -19,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.core.io.InputStreamResource;
 
 @RestController
 @RequestMapping("/api/v1/files")
@@ -38,10 +45,12 @@ public class FileMetadataController {
 
     @PostMapping(consumes = "multipart/form-data")
     public ResponseEntity<FileMetadataResponse> create(Authentication authentication,
+                                                       HttpServletRequest request,
                                                        @RequestHeader(value = "Idempotency-Key", required = false)
                                                        String idempotencyKey,
                                                        @RequestPart("file") MultipartFile file) {
         UUID ownerId = extractUserId(authentication);
+        String correlationId = CorrelationIdResolver.resolve(request);
         String requestHash = fileCreateRequestHasher.hash(file);
 
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
@@ -52,7 +61,7 @@ public class FileMetadataController {
             }
         }
 
-        FileEntity created = fileMetadataService.create(ownerId, file);
+        FileEntity created = fileMetadataService.create(ownerId, file, correlationId);
         FileMetadataResponse response = FileMetadataResponse.from(created);
 
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
@@ -72,11 +81,25 @@ public class FileMetadataController {
         return ResponseEntity.ok(new FileListResponse(items));
     }
 
+    @GetMapping("/{fileId}/download")
+    public ResponseEntity<InputStreamResource> download(Authentication authentication,
+                                                        HttpServletRequest request,
+                                                        @PathVariable UUID fileId) throws IOException {
+        UUID ownerId = extractUserId(authentication);
+        FileDownload fileDownload = fileMetadataService.download(ownerId, fileId, CorrelationIdResolver.resolve(request));
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileDownload.fileName() + "\"")
+            .contentType(MediaType.parseMediaType(fileDownload.contentType()))
+            .contentLength(fileDownload.sizeBytes())
+            .body(new InputStreamResource(fileDownload.inputStream()));
+    }
+
     @DeleteMapping("/{fileId}")
     public ResponseEntity<Void> delete(Authentication authentication,
+                                       HttpServletRequest request,
                                        @PathVariable UUID fileId) {
         UUID ownerId = extractUserId(authentication);
-        fileMetadataService.delete(ownerId, fileId);
+        fileMetadataService.delete(ownerId, fileId, CorrelationIdResolver.resolve(request));
         return ResponseEntity.noContent().build();
     }
 

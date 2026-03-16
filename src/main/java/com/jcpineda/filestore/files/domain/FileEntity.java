@@ -137,6 +137,22 @@ public class FileEntity {
         this.status = FileStatus.DELETING;
     }
 
+    public void markReady(String checksum) {
+        this.status = FileStatus.READY;
+        this.checksum = checksum;
+        this.failureReason = null;
+    }
+
+    public void markFailed(String failureReason) {
+        this.status = FileStatus.FAILED;
+        this.failureReason = failureReason;
+    }
+
+    public void markDeleteFailed(String failureReason) {
+        this.status = FileStatus.DELETE_FAILED;
+        this.failureReason = failureReason;
+    }
+
     public void markDeleted() {
         this.deletedAt = OffsetDateTime.now(ZoneOffset.UTC);
     }

@@ -3,6 +3,7 @@ package com.jcpineda.filestore.files.api;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -160,6 +161,32 @@ class FileMetadataControllerIntegrationTest {
                 .header("Authorization", "Bearer " + token))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.items.length()").value(0));
+    }
+
+    @Test
+    void ownerCanDownloadStoredFileBytes() throws Exception {
+        String token = registerAndLogin("download-owner@example.com", "secret123");
+
+        MockMultipartFile file = new MockMultipartFile(
+            "file",
+            "download.txt",
+            MediaType.TEXT_PLAIN_VALUE,
+            "download-body".getBytes()
+        );
+
+        MvcResult createResult = mockMvc.perform(multipart("/api/v1/files")
+                .file(file)
+                .header("Authorization", "Bearer " + token))
+            .andExpect(status().isCreated())
+            .andReturn();
+
+        String fileId = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asText();
+
+        mockMvc.perform(get("/api/v1/files/{fileId}/download", fileId)
+                .header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType(MediaType.TEXT_PLAIN))
+            .andExpect(content().bytes("download-body".getBytes()));
     }
 
     @Test

@@ -3,14 +3,18 @@
 A learning-focused Java project to practice core system design concepts by building a file storage application with authentication, REST APIs, SSE, and WebSocket support.
 
 ## Current Phase
-Milestone B in progress.
+Milestone C in progress.
 
 - Milestone A: system design blueprint (requirements, APIs, event contracts, DB schema, diagrams).
 - Milestone B: auth + metadata implementation.
   - B1 complete: Spring Boot bootstrap + profiles + health endpoint + Docker Compose.
   - B2 complete: Flyway migration for `users`, `files`, `idempotency_keys`.
+- Milestone C: object storage + SSE.
+  - Local MinIO object storage support added.
+  - File bytes are now persisted outside PostgreSQL.
+  - SSE endpoint added for user-scoped lifecycle events.
 
-Application features beyond bootstrap/migrations are not implemented yet.
+Implemented so far: auth, file metadata CRUD, idempotent create, local object storage, download, and SSE stream bootstrap.
 
 ## Repository Structure
 
@@ -32,9 +36,9 @@ Application features beyond bootstrap/migrations are not implemented yet.
 
 ## Run Locally
 
-1. Start PostgreSQL:
+1. Start PostgreSQL and MinIO:
 ```bash
-docker compose up -d
+docker compose up -d postgres minio
 ```
 
 2. Run app:
@@ -53,6 +57,12 @@ curl http://localhost:8080/api/v1/health
 curl http://localhost:8080/actuator/health
 ```
 
+4. MinIO console:
+```bash
+open http://localhost:9001
+```
+Default local credentials are `minioadmin` / `minioadmin`.
+
 ## Next Step
 
-Implement B3-B5 (auth domain, JWT security, register/login endpoints).
+Expand SSE behavior with richer event sequencing and add Week 2 vertical storage/realtime runbooks.

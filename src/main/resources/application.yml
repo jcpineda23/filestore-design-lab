@@ -4,7 +4,7 @@ spring:
   profiles:
     active: local
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/filestore}
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/filestore}
     username: ${DB_USERNAME:filestore}
     password: ${DB_PASSWORD:filestore}
     driver-class-name: org.postgresql.Driver
@@ -32,3 +32,10 @@ security:
   jwt:
     secret: ${JWT_SECRET:change-me-change-me-change-me-change-me}
     expiration-seconds: ${JWT_EXPIRATION_SECONDS:3600}
+
+storage:
+  minio:
+    endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+    access-key: ${MINIO_ACCESS_KEY:minioadmin}
+    secret-key: ${MINIO_SECRET_KEY:minioadmin}
+    bucket: ${MINIO_BUCKET:filestore}
