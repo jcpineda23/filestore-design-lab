@@ -18,7 +18,7 @@ services:
       retries: 5
 
   minio:
-    image: minio/minio:RELEASE.2026-02-18T16-25-55Z
+    image: minio/minio:latest
     container_name: filestore-minio
     restart: unless-stopped
     environment:

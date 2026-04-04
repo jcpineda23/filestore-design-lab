@@ -1,8 +1,9 @@
 # Vertical Log Format
 
-Each run of `scripts/run_week1_verticals.sh` writes a timestamped markdown log to:
+Each run of a vertical script writes a timestamped markdown log to:
 
 - `docs/verticals/logs/week1-YYYYMMDD-HHMMSS.md`
+- `docs/verticals/logs/week2-YYYYMMDD-HHMMSS.md`
 
 ## What each step log contains
 
@@ -32,6 +33,7 @@ Each run of `scripts/run_week1_verticals.sh` writes a timestamped markdown log t
 ```bash
 cd /Users/jcpineda/Code/FileStoreDesignLab
 ./scripts/run_week1_verticals.sh
+./scripts/run_week2_verticals.sh
 ```
 
 After run completion, open the latest file under `docs/verticals/logs/`.

@@ -20,6 +20,16 @@ MINIO_SECRET_KEY=minioadmin \
 mvn spring-boot:run
 ```
 
+3. Verify C1 state:
+```bash
+./scripts/verify_c1_state.sh
+```
+
+4. Run the C2 vertical script:
+```bash
+./scripts/run_week2_verticals.sh
+```
+
 ## Vertical 1: Real Upload Storage Path
 
 Goal: validate the upload path stores bytes in object storage before finalizing metadata.
@@ -34,6 +44,11 @@ Expected:
 2. Download returns `200` with original content bytes.
 3. File row status ends in `READY`.
 4. SSE stream receives upload lifecycle events in order.
+
+Automation:
+```bash
+./scripts/run_week2_verticals.sh
+```
 
 ## Vertical 2: Delete Consistency
 

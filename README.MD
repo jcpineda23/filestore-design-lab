@@ -36,7 +36,7 @@ Implemented so far: auth, file metadata CRUD, idempotent create, local object st
 
 ## Run Locally
 
-1. Start PostgreSQL and MinIO:
+1. Start PostgreSQL and MinIO in containers:
 ```bash
 docker compose up -d postgres minio
 ```
@@ -51,17 +51,29 @@ If Maven Wrapper is not present yet, use:
 DB_URL=jdbc:postgresql://localhost:5433/filestore mvn spring-boot:run
 ```
 
-3. Health check:
+3. Verify C1 state from the command line:
+```bash
+./scripts/verify_c1_state.sh
+```
+
+4. Health check endpoints:
 ```bash
 curl http://localhost:8080/api/v1/health
 curl http://localhost:8080/actuator/health
 ```
 
-4. MinIO console:
+5. MinIO console:
 ```bash
 open http://localhost:9001
 ```
 Default local credentials are `minioadmin` / `minioadmin`.
+
+The C1 verifier checks Docker container health, Postgres readiness, MinIO liveness, and whether the application reports the `storage` health component.
+
+6. Run the Week 2 storage vertical:
+```bash
+./scripts/run_week2_verticals.sh
+```
 
 ## Next Step
 
