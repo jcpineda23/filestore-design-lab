@@ -1,0 +1,410 @@
+:root {
+  --canvas: #f2ede4;
+  --canvas-accent: #efe3d0;
+  --ink: #1f1d1a;
+  --muted: #6a6156;
+  --panel: rgba(255, 251, 245, 0.88);
+  --panel-border: rgba(56, 43, 28, 0.12);
+  --brand: #0f766e;
+  --brand-strong: #115e59;
+  --danger: #9f1239;
+  --danger-strong: #881337;
+  --idle: #7c6f64;
+  --ok: #166534;
+  --shadow: 0 20px 60px rgba(53, 37, 22, 0.12);
+  --radius: 24px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--ink);
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  background:
+    radial-gradient(circle at top left, rgba(15, 118, 110, 0.22), transparent 30%),
+    radial-gradient(circle at top right, rgba(176, 93, 38, 0.18), transparent 26%),
+    linear-gradient(180deg, var(--canvas) 0%, var(--canvas-accent) 100%);
+}
+
+button,
+input,
+code,
+pre {
+  font-family: "SF Mono", "Monaco", "Consolas", "Liberation Mono", monospace;
+}
+
+.page-shell {
+  width: min(1400px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 32px 0 48px;
+}
+
+.hero {
+  padding: 28px 8px 20px;
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  color: var(--brand-strong);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.78rem;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2.4rem, 4vw, 4.6rem);
+  line-height: 0.95;
+}
+
+.hero-copy {
+  max-width: 760px;
+  margin: 18px 0 0;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+.dashboard {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 18px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  backdrop-filter: blur(14px);
+}
+
+.auth-panel,
+.health-panel,
+.upload-panel {
+  grid-column: span 4;
+}
+
+.files-panel,
+.event-panel,
+.action-panel {
+  grid-column: span 12;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.panel-header h2,
+.panel-header h3 {
+  margin: 0;
+}
+
+.panel-hint {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.panel-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.two-col {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.compact-gap {
+  gap: 12px;
+}
+
+.stacked-form,
+.upload-form {
+  display: grid;
+  gap: 12px;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+input[type="email"],
+input[type="password"],
+input[type="file"] {
+  width: 100%;
+  border: 1px solid rgba(31, 29, 26, 0.12);
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--ink);
+}
+
+button {
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 16px;
+  background: var(--brand);
+  color: #f7f8f5;
+  cursor: pointer;
+  transition: transform 120ms ease, opacity 120ms ease, background 120ms ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  background: var(--brand-strong);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  transform: none;
+}
+
+.secondary-button {
+  background: rgba(31, 29, 26, 0.08);
+  color: var(--ink);
+}
+
+.secondary-button:hover {
+  background: rgba(31, 29, 26, 0.14);
+}
+
+.danger-button {
+  background: rgba(159, 18, 57, 0.12);
+  color: var(--danger);
+}
+
+.danger-button:hover {
+  background: var(--danger);
+  color: #fff7f8;
+}
+
+.button-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.badge-idle {
+  background: rgba(124, 111, 100, 0.14);
+  color: var(--idle);
+}
+
+.badge-ok {
+  background: rgba(22, 101, 52, 0.12);
+  color: var(--ok);
+}
+
+.key-value-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.key-value-list div {
+  display: grid;
+  gap: 4px;
+}
+
+.key-value-list span {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.code-block {
+  margin: 0;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(33, 27, 23, 0.92);
+  color: #f4ede5;
+  overflow: auto;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.muted {
+  color: #cabaa8;
+}
+
+.health-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.health-card {
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.52);
+  border: 1px solid rgba(31, 29, 26, 0.08);
+}
+
+.health-card h3 {
+  margin: 0 0 8px;
+}
+
+.health-value {
+  margin: 0 0 10px;
+  font-size: 1.3rem;
+}
+
+.file-picker {
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px dashed rgba(15, 118, 110, 0.28);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+ td {
+  padding: 12px 10px;
+  border-bottom: 1px solid rgba(31, 29, 26, 0.08);
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.action-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.event-log,
+.action-log {
+  display: grid;
+  gap: 12px;
+  max-height: 420px;
+  overflow: auto;
+}
+
+.event-entry,
+.action-entry {
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.56);
+  border: 1px solid rgba(31, 29, 26, 0.08);
+}
+
+.event-meta,
+.action-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.event-name {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.event-data,
+.action-notes {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.empty-state {
+  color: var(--muted);
+  text-align: center;
+  padding: 18px;
+}
+
+.status-chip {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  background: rgba(31, 29, 26, 0.08);
+}
+
+.status-ready {
+  background: rgba(22, 101, 52, 0.12);
+  color: var(--ok);
+}
+
+.status-failed,
+.status-delete_failed {
+  background: rgba(159, 18, 57, 0.12);
+  color: var(--danger);
+}
+
+.status-uploading,
+.status-deleting {
+  background: rgba(15, 118, 110, 0.12);
+  color: var(--brand-strong);
+}
+
+@media (max-width: 1100px) {
+  .auth-panel,
+  .health-panel,
+  .upload-panel {
+    grid-column: span 12;
+  }
+
+  .health-cards,
+  .two-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .page-shell {
+    width: min(100vw - 20px, 1400px);
+    padding-top: 18px;
+  }
+
+  .panel {
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .hero h1 {
+    font-size: 2.3rem;
+  }
+
+  .panel-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FileStore Learning Console</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <p class="eyebrow">System Design Lab</p>
+      <h1>FileStore Learning Console</h1>
+      <p class="hero-copy">
+        Trigger the platform, watch state move through the system, and inspect real-time events as they happen.
+      </p>
+    </header>
+
+    <main class="dashboard">
+      <section class="panel auth-panel">
+        <div class="panel-header">
+          <h2>Auth</h2>
+          <span id="auth-badge" class="badge badge-idle">Signed out</span>
+        </div>
+        <div class="panel-grid two-col compact-gap">
+          <form id="register-form" class="stacked-form">
+            <h3>Register</h3>
+            <label>Email
+              <input id="register-email" type="email" required placeholder="learner@example.com">
+            </label>
+            <label>Password
+              <input id="register-password" type="password" required minlength="8" value="secret123">
+            </label>
+            <button type="submit">Register</button>
+          </form>
+
+          <form id="login-form" class="stacked-form">
+            <h3>Login</h3>
+            <label>Email
+              <input id="login-email" type="email" required placeholder="learner@example.com">
+            </label>
+            <label>Password
+              <input id="login-password" type="password" required minlength="8" value="secret123">
+            </label>
+            <button type="submit">Login</button>
+          </form>
+        </div>
+        <div class="key-value-list">
+          <div><span>Current User</span><code id="current-user">-</code></div>
+          <div><span>Token Status</span><code id="token-status">No token loaded</code></div>
+          <div><span>Expires At</span><code id="token-expiry">-</code></div>
+        </div>
+      </section>
+
+      <section class="panel health-panel">
+        <div class="panel-header">
+          <h2>System Health</h2>
+          <button id="refresh-health" class="secondary-button">Refresh</button>
+        </div>
+        <div class="health-cards">
+          <article class="health-card">
+            <h3>Application</h3>
+            <p id="app-health-status" class="health-value">Unknown</p>
+            <pre id="app-health-body" class="code-block muted">No data yet.</pre>
+          </article>
+          <article class="health-card">
+            <h3>Actuator</h3>
+            <p id="actuator-health-status" class="health-value">Unknown</p>
+            <pre id="actuator-health-body" class="code-block muted">No data yet.</pre>
+          </article>
+          <article class="health-card">
+            <h3>Storage</h3>
+            <p id="storage-health-status" class="health-value">Unknown</p>
+            <pre id="storage-health-body" class="code-block muted">No data yet.</pre>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel upload-panel">
+        <div class="panel-header">
+          <h2>Upload</h2>
+          <span class="panel-hint">Exercises metadata + blob consistency</span>
+        </div>
+        <form id="upload-form" class="upload-form">
+          <label class="file-picker">
+            <span>Select file</span>
+            <input id="file-input" type="file" required>
+          </label>
+          <button type="submit">Upload File</button>
+        </form>
+        <pre id="upload-result" class="code-block muted">No upload yet.</pre>
+      </section>
+
+      <section class="panel files-panel">
+        <div class="panel-header">
+          <h2>Files</h2>
+          <div class="button-row">
+            <button id="refresh-files" class="secondary-button">Refresh List</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Size</th>
+                <th>Checksum</th>
+                <th>Updated</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="files-table-body">
+              <tr>
+                <td colspan="6" class="empty-state">No files loaded.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel event-panel">
+        <div class="panel-header">
+          <h2>Event Stream</h2>
+          <div class="button-row">
+            <button id="connect-events">Connect</button>
+            <button id="disconnect-events" class="secondary-button">Disconnect</button>
+          </div>
+        </div>
+        <p class="panel-hint">Exercises server-to-client streaming with authenticated SSE over fetch.</p>
+        <div id="event-log" class="event-log">
+          <div class="empty-state">No events yet.</div>
+        </div>
+      </section>
+
+      <section class="panel action-panel">
+        <div class="panel-header">
+          <h2>Action Log</h2>
+          <button id="clear-action-log" class="secondary-button">Clear</button>
+        </div>
+        <div id="action-log" class="action-log">
+          <div class="empty-state">No actions recorded.</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <template id="file-row-template">
+    <tr>
+      <td data-field="fileName"></td>
+      <td data-field="status"></td>
+      <td data-field="sizeBytes"></td>
+      <td data-field="checksum"></td>
+      <td data-field="updatedAt"></td>
+      <td class="action-cell">
+        <button data-action="download">Download</button>
+        <button data-action="delete" class="danger-button">Delete</button>
+      </td>
+    </tr>
+  </template>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>

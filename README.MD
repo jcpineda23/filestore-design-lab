@@ -78,3 +78,7 @@ The C1 verifier checks Docker container health, Postgres readiness, MinIO livene
 ## Next Step
 
 Expand SSE behavior with richer event sequencing and add Week 2 vertical storage/realtime runbooks.
+
+## Learning UI
+
+Open the browser console at `http://localhost:8080/` to register, log in, upload files, inspect health, and watch SSE events in one place.
