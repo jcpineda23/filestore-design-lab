@@ -25,9 +25,14 @@ mvn spring-boot:run
 ./scripts/verify_c1_state.sh
 ```
 
-4. Run the C2 vertical script:
+4. Run the core Week 2 vertical script:
 ```bash
 ./scripts/run_week2_verticals.sh
+```
+
+5. Run the outage drill when you are ready:
+```bash
+RUN_FAILURE_DRILL=true ./scripts/run_week2_verticals.sh
 ```
 
 ## Vertical 1: Real Upload Storage Path
@@ -65,6 +70,11 @@ Expected:
 3. Download returns `404` after delete.
 4. SSE emits `file.deleted`.
 
+Automation:
+```bash
+./scripts/run_week2_verticals.sh
+```
+
 ## Vertical 3: Storage Failure Drill
 
 Goal: observe consistency behavior when blob storage is unavailable.
@@ -79,3 +89,8 @@ Expected:
 2. File row ends in `FAILED`.
 3. SSE emits `file.upload.failed`.
 4. No object remains partially accessible.
+
+Automation:
+```bash
+RUN_FAILURE_DRILL=true ./scripts/run_week2_verticals.sh
+```

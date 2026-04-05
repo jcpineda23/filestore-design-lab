@@ -4,6 +4,7 @@ set -euo pipefail
 BASE_URL="${BASE_URL:-http://localhost:8080}"
 EMAIL="vertical2+$(date +%s)@example.com"
 PASSWORD="secret123"
+RUN_FAILURE_DRILL="${RUN_FAILURE_DRILL:-false}"
 
 LOG_DIR="docs/verticals/logs"
 mkdir -p "$LOG_DIR"
@@ -11,10 +12,13 @@ LOG_FILE="$LOG_DIR/week2-$(date +%Y%m%d-%H%M%S).md"
 
 TOKEN=""
 FILE_ID=""
+FAILED_FILE_NAME=""
 SSE_PID=""
 SSE_FILE="/tmp/week2_sse_$$.log"
 UPLOAD_FILE="/tmp/week2_upload_$$.txt"
 DOWNLOAD_FILE="/tmp/week2_download_$$.txt"
+FAILED_UPLOAD_FILE="/tmp/week2_failed_upload_$$.txt"
+MINIO_STOPPED_BY_SCRIPT="false"
 
 write_log_header() {
   cat > "$LOG_FILE" <<LOG
@@ -67,9 +71,16 @@ cleanup() {
     kill "$SSE_PID" >/dev/null 2>&1 || true
     wait "$SSE_PID" 2>/dev/null || true
   fi
+  if [[ "$MINIO_STOPPED_BY_SCRIPT" == "true" ]]; then
+    docker compose up -d minio >/dev/null 2>&1 || true
+  fi
   rm -f "$SSE_FILE" "$UPLOAD_FILE" "$DOWNLOAD_FILE" \
+    "$FAILED_UPLOAD_FILE" \
     /tmp/week2_register.json /tmp/week2_login.json /tmp/week2_create.json \
-    /tmp/week2_list.json /tmp/week2_verify_c1.txt /tmp/week2_unauth.json
+    /tmp/week2_list.json /tmp/week2_verify_c1.txt /tmp/week2_unauth.json \
+    /tmp/week2_delete.json /tmp/week2_post_delete_download.json \
+    /tmp/week2_failed_create.json /tmp/week2_list_after_failure.json \
+    /tmp/week2_health_during_failure.json
 }
 
 trap cleanup EXIT
@@ -113,6 +124,13 @@ request_auth_upload() {
     -F "file=@${file_path};type=text/plain"
 }
 
+request_auth_delete() {
+  local url="$1"
+  local outfile="$2"
+  curl -sS -o "$outfile" -w "%{http_code}" -X DELETE "$url" \
+    -H "Authorization: Bearer $TOKEN"
+}
+
 fail_and_exit() {
   local step="$1"
   local title="$2"
@@ -146,7 +164,7 @@ wait_for_sse_event() {
 
 write_log_header
 
-echo "[1/7] Verify C1 state"
+echo "[1/10] Verify C1 state"
 if ./scripts/verify_c1_state.sh >/tmp/week2_verify_c1.txt 2>&1; then
   append_step_log "1" "Verify C1 State" \
     "Containerized dependency readiness" \
@@ -161,7 +179,7 @@ else
     "./scripts/verify_c1_state.sh" "500" "$(tr '\n' ' ' < /tmp/week2_verify_c1.txt)"
 fi
 
-echo "[2/7] Register and login"
+echo "[2/10] Register and login"
 REGISTER_STATUS=$(request_json "POST" "$BASE_URL/api/v1/auth/register" "/tmp/week2_register.json" "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}")
 LOGIN_STATUS=$(request_json "POST" "$BASE_URL/api/v1/auth/login" "/tmp/week2_login.json" "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}")
 TOKEN=$(extract_token /tmp/week2_login.json)
@@ -180,7 +198,7 @@ append_step_log "2" "Register And Login" \
   "POST /api/v1/auth/register and POST /api/v1/auth/login" "$LOGIN_STATUS" "PASSED" \
   "User email: $EMAIL; token length: ${#TOKEN}"
 
-echo "[3/7] Open SSE stream"
+echo "[3/10] Open SSE stream"
 curl -sS -N "$BASE_URL/api/v1/events/stream" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Accept: text/event-stream" > "$SSE_FILE" &
@@ -199,7 +217,7 @@ append_step_log "3" "Open SSE Stream" \
   "Proves the user-specific event channel is open before upload starts" \
   "GET /api/v1/events/stream" "200" "PASSED" "Connected event received"
 
-echo "[4/7] Upload real file"
+echo "[4/10] Upload real file"
 printf 'hello-from-week2-%s\n' "$(date +%s)" > "$UPLOAD_FILE"
 CREATE_STATUS=$(request_auth_upload "/tmp/week2_create.json" "$UPLOAD_FILE")
 FILE_ID=$(extract_id /tmp/week2_create.json)
@@ -216,7 +234,7 @@ append_step_log "4" "Upload Real File" \
   "Exercises the full storage write path and READY transition" \
   "POST /api/v1/files multipart" "$CREATE_STATUS" "PASSED" "File ID: $FILE_ID; response: $(cat /tmp/week2_create.json)"
 
-echo "[5/7] Verify file list and READY state"
+echo "[5/10] Verify file list and READY state"
 LIST_STATUS=$(request_auth_get "$BASE_URL/api/v1/files" "/tmp/week2_list.json")
 if [[ "$LIST_STATUS" != "200" ]] || ! grep -q "\"id\":\"$FILE_ID\"" /tmp/week2_list.json || ! grep -q "\"status\":\"READY\"" /tmp/week2_list.json; then
   fail_and_exit "5" "Verify READY State" \
@@ -231,7 +249,7 @@ append_step_log "5" "Verify READY State" \
   "Confirms that the durable metadata view reflects successful blob storage" \
   "GET /api/v1/files" "$LIST_STATUS" "PASSED" "File $FILE_ID is visible and READY"
 
-echo "[6/7] Download and compare bytes"
+echo "[6/10] Download and compare bytes"
 DOWNLOAD_STATUS=$(curl -sS -o "$DOWNLOAD_FILE" -w "%{http_code}" \
   "$BASE_URL/api/v1/files/$FILE_ID/download" \
   -H "Authorization: Bearer $TOKEN")
@@ -250,7 +268,7 @@ append_step_log "6" "Download And Compare Bytes" \
   "GET /api/v1/files/$FILE_ID/download" "$DOWNLOAD_STATUS" "PASSED" \
   "Uploaded and downloaded bytes match exactly"
 
-echo "[7/7] Verify SSE upload lifecycle"
+echo "[7/10] Verify SSE upload lifecycle"
 STARTED_OK="no"
 PROGRESS_OK="no"
 COMPLETED_OK="no"
@@ -277,6 +295,98 @@ append_step_log "7" "Verify SSE Upload Lifecycle" \
   "Ensures clients can observe upload lifecycle transitions without polling" \
   "SSE stream for file.upload.started/progress/completed" "200" "PASSED" \
   "Observed started=$STARTED_OK progress=$PROGRESS_OK completed=$COMPLETED_OK"
+
+echo "[8/10] Delete file and verify user view updates"
+DELETE_STATUS=$(request_auth_delete "$BASE_URL/api/v1/files/$FILE_ID" "/tmp/week2_delete.json")
+POST_DELETE_LIST_STATUS=$(request_auth_get "$BASE_URL/api/v1/files" "/tmp/week2_list.json")
+POST_DELETE_DOWNLOAD_STATUS=$(curl -sS -o /tmp/week2_post_delete_download.json -w "%{http_code}" \
+  "$BASE_URL/api/v1/files/$FILE_ID/download" \
+  -H "Authorization: Bearer $TOKEN")
+if [[ "$DELETE_STATUS" != "204" || "$POST_DELETE_LIST_STATUS" != "200" || "$POST_DELETE_DOWNLOAD_STATUS" != "404" ]] \
+  || grep -q "\"id\":\"$FILE_ID\"" /tmp/week2_list.json; then
+  fail_and_exit "8" "Delete Consistency" \
+    "Coordinated metadata and blob deletion" \
+    "FileMetadataController.delete -> FileMetadataService.delete -> ObjectStorageService.deleteObject -> FileRepository.save -> UserEventPublisher.publish" \
+    "Confirms the file disappears from the user view after object deletion and soft delete complete" \
+    "DELETE /api/v1/files/$FILE_ID and follow-up list/download checks" "$DELETE_STATUS" \
+    "Delete: $(cat /tmp/week2_delete.json 2>/dev/null); List: $(cat /tmp/week2_list.json); Download status: $POST_DELETE_DOWNLOAD_STATUS; Download body: $(cat /tmp/week2_post_delete_download.json 2>/dev/null)"
+fi
+append_step_log "8" "Delete Consistency" \
+  "Coordinated metadata and blob deletion" \
+  "FileMetadataController.delete -> FileMetadataService.delete -> ObjectStorageService.deleteObject -> FileRepository.save -> UserEventPublisher.publish" \
+  "Confirms the file disappears from the user view after object deletion and soft delete complete" \
+  "DELETE /api/v1/files/$FILE_ID and follow-up list/download checks" "$DELETE_STATUS" "PASSED" \
+  "Delete returned 204, list excluded the file, and download now returns 404"
+
+echo "[9/10] Verify SSE delete lifecycle"
+DELETED_OK="no"
+if wait_for_sse_event "file.deleted"; then
+  DELETED_OK="yes"
+fi
+if [[ "$DELETED_OK" != "yes" ]]; then
+  fail_and_exit "9" "Verify SSE Delete Lifecycle" \
+    "Real-time visibility for delete completion" \
+    "FileMetadataService.publish -> DomainEventFactory.fileEvent -> UserEventPublisher.publish -> SseEmitter.send" \
+    "Ensures clients can react to destructive operations without polling the list endpoint" \
+    "SSE stream for file.deleted" "200" "SSE output: $(cat "$SSE_FILE" 2>/dev/null)"
+fi
+append_step_log "9" "Verify SSE Delete Lifecycle" \
+  "Real-time visibility for delete completion" \
+  "FileMetadataService.publish -> DomainEventFactory.fileEvent -> UserEventPublisher.publish -> SseEmitter.send" \
+  "Ensures clients can react to destructive operations without polling the list endpoint" \
+  "SSE stream for file.deleted" "200" "PASSED" \
+  "Observed file.deleted event on the stream"
+
+echo "[10/10] Optional storage failure drill"
+if [[ "$RUN_FAILURE_DRILL" == "true" ]]; then
+  FAILED_FILE_NAME="failure-drill-$(date +%s).txt"
+  printf 'failure-drill-%s\n' "$(date +%s)" > "$FAILED_UPLOAD_FILE"
+  mv "$FAILED_UPLOAD_FILE" "/tmp/$FAILED_FILE_NAME"
+  FAILED_UPLOAD_FILE="/tmp/$FAILED_FILE_NAME"
+
+  docker compose stop minio >/dev/null
+  MINIO_STOPPED_BY_SCRIPT="true"
+
+  FAILED_CREATE_STATUS=$(request_auth_upload "/tmp/week2_failed_create.json" "$FAILED_UPLOAD_FILE")
+  HEALTH_DURING_FAILURE_STATUS=$(curl -sS -o /tmp/week2_health_during_failure.json -w "%{http_code}" \
+    "$BASE_URL/actuator/health")
+
+  docker compose up -d minio >/dev/null
+  MINIO_STOPPED_BY_SCRIPT="false"
+
+  LIST_AFTER_FAILURE_STATUS=$(request_auth_get "$BASE_URL/api/v1/files" "/tmp/week2_list_after_failure.json")
+
+  FAILURE_EVENT_OK="no"
+  if wait_for_sse_event "file.upload.failed"; then
+    FAILURE_EVENT_OK="yes"
+  fi
+
+  if [[ "$FAILED_CREATE_STATUS" != "503" || "$HEALTH_DURING_FAILURE_STATUS" != "200" || "$LIST_AFTER_FAILURE_STATUS" != "200" || "$FAILURE_EVENT_OK" != "yes" ]] \
+    || ! grep -q '"status":"DOWN"' /tmp/week2_health_during_failure.json \
+    || ! grep -q "\"fileName\":\"$FAILED_FILE_NAME\"" /tmp/week2_list_after_failure.json \
+    || ! grep -q '"status":"FAILED"' /tmp/week2_list_after_failure.json; then
+    fail_and_exit "10" "Storage Failure Drill" \
+      "Partial failure handling across metadata, blob storage, health reporting, and events" \
+      "docker compose stop minio -> FileMetadataService.create -> StorageUnavailableException -> FileExceptionHandler -> StorageHealthIndicator -> UserEventPublisher.publish" \
+      "Confirms outage behavior is visible in API errors, file state, health endpoints, and SSE failure events" \
+      "RUN_FAILURE_DRILL=true ./scripts/run_week2_verticals.sh" "$FAILED_CREATE_STATUS" \
+      "Create: $(cat /tmp/week2_failed_create.json 2>/dev/null); Health: $(cat /tmp/week2_health_during_failure.json 2>/dev/null); Files: $(cat /tmp/week2_list_after_failure.json 2>/dev/null); SSE: $(cat "$SSE_FILE" 2>/dev/null)"
+  fi
+
+  append_step_log "10" "Storage Failure Drill" \
+    "Partial failure handling across metadata, blob storage, health reporting, and events" \
+    "docker compose stop minio -> FileMetadataService.create -> StorageUnavailableException -> FileExceptionHandler -> StorageHealthIndicator -> UserEventPublisher.publish" \
+    "Confirms outage behavior is visible in API errors, file state, health endpoints, and SSE failure events" \
+    "RUN_FAILURE_DRILL=true ./scripts/run_week2_verticals.sh" "$FAILED_CREATE_STATUS" "PASSED" \
+    "Upload returned 503, actuator storage health went DOWN, file row ended FAILED, and file.upload.failed was observed"
+else
+  append_step_log "10" "Storage Failure Drill" \
+    "Partial failure handling across metadata, blob storage, health reporting, and events" \
+    "docker compose stop minio -> FileMetadataService.create -> StorageUnavailableException -> FileExceptionHandler -> StorageHealthIndicator -> UserEventPublisher.publish" \
+    "This scenario is opt-in because it intentionally interrupts MinIO for the running environment" \
+    "RUN_FAILURE_DRILL=true ./scripts/run_week2_verticals.sh" "SKIPPED" "PASSED" \
+    "Skipped by default. Re-run with RUN_FAILURE_DRILL=true to exercise outage behavior."
+fi
 
 mark_summary "PASSED"
 
