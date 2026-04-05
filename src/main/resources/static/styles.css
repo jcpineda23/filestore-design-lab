@@ -92,6 +92,7 @@ pre {
 
 .files-panel,
 .event-panel,
+.drill-panel,
 .action-panel {
   grid-column: span 12;
 }
@@ -195,6 +196,32 @@ button:disabled {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.summary-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.summary-chip {
+  min-width: 120px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(31, 29, 26, 0.08);
+}
+
+.summary-chip span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin-bottom: 4px;
+}
+
+.summary-chip strong {
+  font-size: 1rem;
 }
 
 .badge {
@@ -373,6 +400,17 @@ th {
 .status-deleting {
   background: rgba(15, 118, 110, 0.12);
   color: var(--brand-strong);
+}
+
+.drill-steps {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--ink);
+  line-height: 1.65;
+}
+
+.drill-steps li + li {
+  margin-top: 8px;
 }
 
 @media (max-width: 1100px) {

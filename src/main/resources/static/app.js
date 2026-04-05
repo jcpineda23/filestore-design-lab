@@ -4,6 +4,7 @@ const state = {
   expiresAt: null,
   files: [],
   eventAbortController: null,
+  eventCount: 0,
 };
 
 const elements = {
@@ -19,7 +20,14 @@ const elements = {
   storageHealthBody: document.querySelector('#storage-health-body'),
   uploadResult: document.querySelector('#upload-result'),
   filesTableBody: document.querySelector('#files-table-body'),
+  fileCountTotal: document.querySelector('#file-count-total'),
+  fileCountReady: document.querySelector('#file-count-ready'),
+  fileCountFailed: document.querySelector('#file-count-failed'),
+  fileCountDeleting: document.querySelector('#file-count-deleting'),
   eventLog: document.querySelector('#event-log'),
+  eventConnectionStatus: document.querySelector('#event-connection-status'),
+  eventCount: document.querySelector('#event-count'),
+  latestEventName: document.querySelector('#latest-event-name'),
   actionLog: document.querySelector('#action-log'),
   fileRowTemplate: document.querySelector('#file-row-template'),
   registerForm: document.querySelector('#register-form'),
@@ -31,6 +39,20 @@ const elements = {
   connectEvents: document.querySelector('#connect-events'),
   disconnectEvents: document.querySelector('#disconnect-events'),
   clearActionLog: document.querySelector('#clear-action-log'),
+  snapshotSystem: document.querySelector('#snapshot-system'),
+  noteMinioStopped: document.querySelector('#note-minio-stopped'),
+  noteMinioRestored: document.querySelector('#note-minio-restored'),
+};
+
+const EVENT_MEANINGS = {
+  'file.upload.started': 'The metadata row exists and the system is beginning the blob write.',
+  'file.upload.progress': 'The write is advancing and the client is receiving progress visibility.',
+  'file.upload.completed': 'The blob write finished and the file should now be READY.',
+  'file.upload.failed': 'Blob storage failed and the file should move to FAILED.',
+  'file.deleted': 'Blob deletion and metadata soft delete both completed.',
+  'file.delete.failed': 'The system could not remove the stored bytes; the metadata should remain in DELETE_FAILED.',
+  'file.downloaded': 'A read path completed successfully against stored bytes.',
+  connected: 'The SSE channel is open and the browser can now observe lifecycle events.',
 };
 
 function prettyJson(value) {
@@ -47,6 +69,20 @@ function updateAuthUI() {
   elements.connectEvents.disabled = !authenticated;
   elements.uploadForm.querySelector('button').disabled = !authenticated;
   elements.refreshFiles.disabled = !authenticated;
+}
+
+function updateEventStatus(status) {
+  elements.eventConnectionStatus.textContent = status;
+}
+
+function updateFileSummary(files) {
+  const ready = files.filter((file) => file.status === 'READY').length;
+  const failed = files.filter((file) => file.status === 'FAILED' || file.status === 'DELETE_FAILED').length;
+  const deleting = files.filter((file) => file.status === 'DELETING').length;
+  elements.fileCountTotal.textContent = String(files.length);
+  elements.fileCountReady.textContent = String(ready);
+  elements.fileCountFailed.textContent = String(failed);
+  elements.fileCountDeleting.textContent = String(deleting);
 }
 
 function formatTimestamp(value) {
@@ -84,15 +120,20 @@ function addEventLog(eventName, payload) {
 
   const entry = document.createElement('article');
   entry.className = 'event-entry';
+  const explanation = EVENT_MEANINGS[eventName] ?? 'No interpretation mapped yet for this event.';
   entry.innerHTML = `
     <div class="event-meta">
       <span>${formatTimestamp(payload.occurredAt ?? new Date().toISOString())}</span>
       <span>${payload.correlationId ?? 'no-correlation-id'}</span>
     </div>
     <h3 class="event-name">${eventName}</h3>
+    <p class="action-notes"><strong>Why this matters:</strong> ${explanation}</p>
     <pre class="code-block event-data">${prettyJson(payload)}</pre>
   `;
   elements.eventLog.prepend(entry);
+  state.eventCount += 1;
+  elements.eventCount.textContent = String(state.eventCount);
+  elements.latestEventName.textContent = eventName;
 }
 
 function setCodeBlock(target, body, fallback = 'No data.') {
@@ -164,6 +205,7 @@ async function refreshHealth() {
 
 function renderFiles(files) {
   elements.filesTableBody.innerHTML = '';
+  updateFileSummary(files);
   if (!files.length) {
     elements.filesTableBody.innerHTML = '<tr><td colspan="6" class="empty-state">No files for this user yet.</td></tr>';
     return;
@@ -213,6 +255,18 @@ async function refreshFiles() {
       `Message: ${error.message}\nBody: ${prettyJson(error.body ?? { raw: 'n/a' })}`,
       'error'
     );
+  }
+}
+
+async function snapshotSystem() {
+  addActionLog(
+    'System snapshot requested',
+    'Operational visibility during failure drills',
+    'Refreshing health and file state together so you can compare before and after a failure event.'
+  );
+  await refreshHealth();
+  if (state.token) {
+    await refreshFiles();
   }
 }
 
@@ -395,6 +449,20 @@ function parseSseBlock(block) {
   }
 }
 
+function handleEventSideEffects(eventName) {
+  if (eventName === 'file.upload.completed' || eventName === 'file.upload.failed' || eventName === 'file.deleted' || eventName === 'file.delete.failed') {
+    refreshFiles().catch(() => {});
+  }
+  if (eventName === 'file.upload.failed' || eventName === 'file.delete.failed') {
+    refreshHealth().catch(() => {});
+  }
+  addActionLog(
+    `Observed ${eventName}`,
+    'Event-driven system visibility',
+    EVENT_MEANINGS[eventName] ?? 'Captured a real-time event from the server.'
+  );
+}
+
 async function connectEventStream() {
   if (!state.token) {
     addActionLog('Event stream blocked', 'Auth boundary awareness', 'Log in before connecting to the event stream.', 'error');
@@ -409,6 +477,7 @@ async function connectEventStream() {
   state.eventAbortController = controller;
   elements.connectEvents.disabled = true;
   elements.disconnectEvents.disabled = false;
+  updateEventStatus('Connecting');
 
   addActionLog(
     'Connecting event stream',
@@ -433,6 +502,7 @@ async function connectEventStream() {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
+    updateEventStatus('Connected');
 
     while (true) {
       const { done, value } = await reader.read();
@@ -446,17 +516,21 @@ async function connectEventStream() {
         const parsed = parseSseBlock(block.trim());
         if (parsed) {
           addEventLog(parsed.eventName, parsed.payload);
+          handleEventSideEffects(parsed.eventName);
         }
       }
     }
 
     if (!controller.signal.aborted) {
+      updateEventStatus('Disconnected');
       addActionLog('Event stream closed by server', 'Connection lifecycle awareness', 'The server ended the stream unexpectedly.', 'error');
     }
   } catch (error) {
     if (controller.signal.aborted) {
+      updateEventStatus('Disconnected');
       addActionLog('Event stream disconnected', 'Connection lifecycle awareness', 'The event stream was disconnected from the UI.');
     } else {
+      updateEventStatus('Error');
       addActionLog(
         'Event stream failed',
         'Real-time channel failure surfacing',
@@ -468,6 +542,9 @@ async function connectEventStream() {
     state.eventAbortController = null;
     elements.connectEvents.disabled = !state.token;
     elements.disconnectEvents.disabled = true;
+    if (elements.eventConnectionStatus.textContent === 'Connecting') {
+      updateEventStatus('Disconnected');
+    }
   }
 }
 
@@ -485,6 +562,23 @@ function wireEvents() {
   elements.refreshFiles.addEventListener('click', refreshFiles);
   elements.connectEvents.addEventListener('click', connectEventStream);
   elements.disconnectEvents.addEventListener('click', disconnectEventStream);
+  elements.snapshotSystem.addEventListener('click', snapshotSystem);
+  elements.noteMinioStopped.addEventListener('click', async () => {
+    addActionLog(
+      'MinIO stop noted',
+      'Failure drill coordination',
+      'You marked object storage as stopped. Next: attempt an upload and watch actuator storage health plus SSE failure events.'
+    );
+    await snapshotSystem();
+  });
+  elements.noteMinioRestored.addEventListener('click', async () => {
+    addActionLog(
+      'MinIO restore noted',
+      'Recovery observation',
+      'You marked object storage as restored. Refreshing health and files so you can confirm the platform recovered.'
+    );
+    await snapshotSystem();
+  });
   elements.clearActionLog.addEventListener('click', () => {
     elements.actionLog.innerHTML = '<div class="empty-state">No actions recorded.</div>';
   });
@@ -493,6 +587,10 @@ function wireEvents() {
 async function bootstrap() {
   updateAuthUI();
   elements.disconnectEvents.disabled = true;
+  updateEventStatus('Disconnected');
+  elements.eventCount.textContent = '0';
+  elements.latestEventName.textContent = '-';
+  updateFileSummary([]);
   wireEvents();
   await refreshHealth();
   addActionLog(

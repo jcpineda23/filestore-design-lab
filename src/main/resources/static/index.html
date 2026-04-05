@@ -98,6 +98,24 @@
             <button id="refresh-files" class="secondary-button">Refresh List</button>
           </div>
         </div>
+        <div class="summary-strip">
+          <div class="summary-chip">
+            <span>Total</span>
+            <strong id="file-count-total">0</strong>
+          </div>
+          <div class="summary-chip">
+            <span>Ready</span>
+            <strong id="file-count-ready">0</strong>
+          </div>
+          <div class="summary-chip">
+            <span>Failed</span>
+            <strong id="file-count-failed">0</strong>
+          </div>
+          <div class="summary-chip">
+            <span>Deleting</span>
+            <strong id="file-count-deleting">0</strong>
+          </div>
+        </div>
         <div class="table-wrap">
           <table>
             <thead>
@@ -127,10 +145,44 @@
             <button id="disconnect-events" class="secondary-button">Disconnect</button>
           </div>
         </div>
+        <div class="summary-strip">
+          <div class="summary-chip">
+            <span>Connection</span>
+            <strong id="event-connection-status">Disconnected</strong>
+          </div>
+          <div class="summary-chip">
+            <span>Events Seen</span>
+            <strong id="event-count">0</strong>
+          </div>
+          <div class="summary-chip">
+            <span>Latest Event</span>
+            <strong id="latest-event-name">-</strong>
+          </div>
+        </div>
         <p class="panel-hint">Exercises server-to-client streaming with authenticated SSE over fetch.</p>
         <div id="event-log" class="event-log">
           <div class="empty-state">No events yet.</div>
         </div>
+      </section>
+
+      <section class="panel drill-panel">
+        <div class="panel-header">
+          <h2>Failure Drill Guide</h2>
+          <div class="button-row">
+            <button id="snapshot-system" class="secondary-button">Snapshot State</button>
+            <button id="note-minio-stopped" class="secondary-button">Note MinIO Stopped</button>
+            <button id="note-minio-restored" class="secondary-button">Note MinIO Restored</button>
+          </div>
+        </div>
+        <p class="panel-hint">Use this while testing C3 and C4. Stop MinIO from the terminal, then watch health, file states, and SSE events update here.</p>
+        <ol class="drill-steps">
+          <li>Connect the event stream.</li>
+          <li>Click <code>Snapshot State</code> to capture a healthy baseline.</li>
+          <li>Stop MinIO in the terminal with <code>docker compose stop minio</code>.</li>
+          <li>Click <code>Note MinIO Stopped</code>, then try an upload.</li>
+          <li>Watch for <code>STORAGE_UNAVAILABLE</code>, a file state of <code>FAILED</code>, and a <code>file.upload.failed</code> event.</li>
+          <li>Start MinIO again with <code>docker compose up -d minio</code> and click <code>Note MinIO Restored</code>.</li>
+        </ol>
       </section>
 
       <section class="panel action-panel">
