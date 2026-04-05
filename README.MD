@@ -23,6 +23,7 @@ Implemented so far: auth, file metadata CRUD, idempotent create, local object st
 - `docs/architecture/milestone-a-implementation-structure.md`: implementation structure for Milestone A artifacts.
 - `docs/contracts/`: API/event/schema contract documents.
 - `docs/diagrams/`: sequence diagrams and architecture visuals.
+- `docs/diagrams/overall-architecture.md`: interview-style high-level system design diagram.
 - `src/main/java/`: reserved for future implementation.
 - `src/test/java/`: reserved for future tests.
 
