@@ -1,6 +1,6 @@
 # FileStore Design Lab (Java)
 
-A learning-focused Java project to practice core system design concepts by building a file storage application with authentication, REST APIs, SSE, and WebSocket support.
+A learning-focused Java project to practice core system design concepts by building a file storage application with authentication, REST APIs, SSE, and future WebSocket support.
 
 ## Current Phase
 Milestone C in progress.
@@ -10,6 +10,7 @@ Milestone C in progress.
   - B1 complete: Spring Boot bootstrap + profiles + health endpoint + Docker Compose.
   - B2 complete: Flyway migration for `users`, `files`, `idempotency_keys`.
 - Milestone C: object storage + SSE.
+  - Scope is SSE-only for this milestone; WebSocket presence is deferred.
   - Local MinIO object storage support added.
   - File bytes are now persisted outside PostgreSQL.
   - SSE endpoint added for user-scoped lifecycle events.
@@ -20,6 +21,7 @@ Implemented so far: auth, file metadata CRUD, idempotent create, local object st
 
 - `docs/milestones/milestone-a-plan.md`: exact Milestone A plan.
 - `docs/milestones/milestone-b-plan.md`: exact Milestone B plan.
+- `docs/milestones/milestone-c-plan.md`: exact Milestone C plan.
 - `docs/architecture/milestone-a-implementation-structure.md`: implementation structure for Milestone A artifacts.
 - `docs/contracts/`: API/event/schema contract documents.
 - `docs/diagrams/`: sequence diagrams and architecture visuals.

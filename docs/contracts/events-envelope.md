@@ -1,6 +1,6 @@
 # Events Envelope
 
-All system events (SSE and WebSocket) use this shared envelope.
+All Milestone C system events use this shared SSE envelope.
 
 ## JSON Shape
 
@@ -35,11 +35,9 @@ All system events (SSE and WebSocket) use this shared envelope.
 
 5. `resourceType`
 - `file` for file operations.
-- `presence` for presence events.
 
 6. `resourceId`
 - File id for file events.
-- Session id for presence events.
 
 7. `correlationId`
 - Propagated from request boundary.
@@ -56,5 +54,4 @@ All system events (SSE and WebSocket) use this shared envelope.
 - frame `data` = full envelope JSON
 
 2. WebSocket
-- server pushes full envelope as text JSON frames
-- client actions include `correlationId` for request/response tracing
+- Deferred beyond Milestone C.

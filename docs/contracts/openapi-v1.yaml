@@ -181,14 +181,7 @@ paths:
       tags: [Events]
       summary: Server-Sent Events stream for current user
       description: |
-        Streams user-scoped events. Clients may reconnect using `Last-Event-ID`.
-      parameters:
-        - in: header
-          name: Last-Event-ID
-          schema:
-            type: string
-          required: false
-          description: Last processed event id for best-effort replay.
+        Streams user-scoped file lifecycle events over SSE.
       responses:
         '200':
           description: SSE stream
@@ -200,26 +193,6 @@ paths:
                   id: 01JXYZABC123
                   event: file.upload.completed
                   data: {"eventId":"01JXYZABC123"}
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /api/v1/ws:
-    get:
-      tags: [Events]
-      summary: WebSocket upgrade endpoint
-      description: |
-        Upgrades to a WebSocket connection for authenticated presence and future
-        interactive user signals.
-      parameters:
-        - in: header
-          name: Sec-WebSocket-Protocol
-          required: false
-          schema:
-            type: string
-          description: Optional bearer token subprotocol strategy.
-      responses:
-        '101':
-          description: Switching Protocols
         '401':
           $ref: '#/components/responses/Unauthorized'
 

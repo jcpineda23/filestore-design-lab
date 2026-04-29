@@ -135,6 +135,7 @@ public class FileEntity {
 
     public void markDeleting() {
         this.status = FileStatus.DELETING;
+        this.failureReason = null;
     }
 
     public void markReady(String checksum) {
@@ -154,6 +155,7 @@ public class FileEntity {
     }
 
     public void markDeleted() {
+        this.failureReason = null;
         this.deletedAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 }

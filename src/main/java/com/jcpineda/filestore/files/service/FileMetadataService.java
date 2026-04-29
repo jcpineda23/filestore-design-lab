@@ -6,7 +6,6 @@ import com.jcpineda.filestore.files.domain.FileEntity;
 import com.jcpineda.filestore.files.domain.FileStatus;
 import com.jcpineda.filestore.files.persistence.FileRepository;
 import com.jcpineda.filestore.storage.ObjectStorageService;
-import com.jcpineda.filestore.storage.StorageOperationException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;

@@ -80,42 +80,8 @@
 }
 ```
 
-## Presence Events (WebSocket-focused in v1)
-
-### `presence.user.online`
-
-```json
-{
-  "data": {
-    "sessionId": "ses_01JXYZSESSION1"
-  }
-}
-```
-
-### `presence.user.offline`
-
-```json
-{
-  "data": {
-    "sessionId": "ses_01JXYZSESSION1",
-    "reason": "disconnect"
-  }
-}
-```
-
-### `presence.heartbeat.missed`
-
-```json
-{
-  "data": {
-    "sessionId": "ses_01JXYZSESSION1",
-    "missedCount": 3
-  }
-}
-```
-
 ## Delivery Semantics (v1)
 
 1. Live delivery is at-most-once.
 2. Ordering is guaranteed per user stream, not globally.
-3. Optional short replay window for SSE via `Last-Event-ID`.
+3. WebSocket presence events are deferred beyond Milestone C.
