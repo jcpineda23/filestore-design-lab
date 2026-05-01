@@ -35,6 +35,11 @@ mvn spring-boot:run
 RUN_FAILURE_DRILL=true ./scripts/run_week2_verticals.sh
 ```
 
+6. Run the full restart-and-recover MinIO drill:
+```bash
+./scripts/run_minio_recovery_drill.sh
+```
+
 ## Vertical 1: Real Upload Storage Path
 
 Goal: validate the upload path stores bytes in object storage before finalizing metadata.
@@ -48,7 +53,7 @@ Expected:
 1. Upload returns `201`.
 2. Download returns `200` with original content bytes.
 3. File row status ends in `READY`.
-4. SSE stream receives upload lifecycle events in order.
+4. SSE stream receives `file.upload.started -> file.upload.progress -> file.upload.completed` in that order.
 
 Automation:
 ```bash
@@ -68,7 +73,7 @@ Expected:
 1. Delete returns `204`.
 2. List excludes the deleted file.
 3. Download returns `404` after delete.
-4. SSE emits `file.deleted`.
+4. SSE emits `file.deleted` after the upload lifecycle completes in this scenario.
 
 Automation:
 ```bash
@@ -93,4 +98,27 @@ Expected:
 Automation:
 ```bash
 RUN_FAILURE_DRILL=true ./scripts/run_week2_verticals.sh
+```
+
+## Vertical 4: MinIO Restart-And-Recover Drill
+
+Goal: validate the Milestone C operational promise that storage-backed APIs recover once MinIO returns, without restarting the Spring Boot app.
+
+1. Upload one file that will be used for outage download checks.
+2. Upload a second file that will be used for outage delete checks.
+3. Stop MinIO.
+4. Confirm upload, download, and delete all return `503 STORAGE_UNAVAILABLE`.
+5. Confirm SSE emits failure events during the outage.
+6. Restart MinIO.
+7. Confirm upload, download, and delete all work again without restarting the API process.
+
+Expected:
+1. `/actuator/health` reports storage degradation while MinIO is down.
+2. Upload, download, and delete each fail cleanly during the outage.
+3. After MinIO restarts, a new upload succeeds, the pre-outage download succeeds with original bytes, and the previously failed delete can be retried successfully.
+4. `file.deleted` is emitted when the delete retry finally succeeds.
+
+Automation:
+```bash
+./scripts/run_minio_recovery_drill.sh
 ```

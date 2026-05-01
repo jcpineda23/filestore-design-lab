@@ -162,6 +162,11 @@ wait_for_sse_event() {
   return 1
 }
 
+event_line_number() {
+  local event_name="$1"
+  grep -n "event: ${event_name}" "$SSE_FILE" 2>/dev/null | head -n 1 | cut -d: -f1
+}
+
 write_log_header
 
 echo "[1/10] Verify C1 state"
@@ -289,12 +294,24 @@ if [[ "$STARTED_OK" != "yes" || "$PROGRESS_OK" != "yes" || "$COMPLETED_OK" != "y
     "Ensures clients can observe upload lifecycle transitions without polling" \
     "SSE stream for file.upload.started/progress/completed" "200" "SSE output: $(cat "$SSE_FILE" 2>/dev/null)"
 fi
+STARTED_LINE=$(event_line_number "file.upload.started")
+PROGRESS_LINE=$(event_line_number "file.upload.progress")
+COMPLETED_LINE=$(event_line_number "file.upload.completed")
+if [[ -z "$STARTED_LINE" || -z "$PROGRESS_LINE" || -z "$COMPLETED_LINE" ]] \
+  || (( STARTED_LINE >= PROGRESS_LINE )) || (( PROGRESS_LINE >= COMPLETED_LINE )); then
+  fail_and_exit "7" "Verify SSE Upload Lifecycle" \
+    "Real-time event visibility for write progress" \
+    "FileMetadataService.publish -> DomainEventFactory.fileEvent -> UserEventPublisher.publish -> SseEmitter.send" \
+    "Ensures clients can observe upload lifecycle transitions without polling" \
+    "SSE stream for file.upload.started/progress/completed" "200" \
+    "Expected file.upload.started -> file.upload.progress -> file.upload.completed ordering. SSE output: $(cat "$SSE_FILE" 2>/dev/null)"
+fi
 append_step_log "7" "Verify SSE Upload Lifecycle" \
   "Real-time event visibility for write progress" \
   "FileMetadataService.publish -> DomainEventFactory.fileEvent -> UserEventPublisher.publish -> SseEmitter.send" \
   "Ensures clients can observe upload lifecycle transitions without polling" \
   "SSE stream for file.upload.started/progress/completed" "200" "PASSED" \
-  "Observed started=$STARTED_OK progress=$PROGRESS_OK completed=$COMPLETED_OK"
+  "Observed started=$STARTED_OK progress=$PROGRESS_OK completed=$COMPLETED_OK in strict order"
 
 echo "[8/10] Delete file and verify user view updates"
 DELETE_STATUS=$(request_auth_delete "$BASE_URL/api/v1/files/$FILE_ID" "/tmp/week2_delete.json")
@@ -330,12 +347,21 @@ if [[ "$DELETED_OK" != "yes" ]]; then
     "Ensures clients can react to destructive operations without polling the list endpoint" \
     "SSE stream for file.deleted" "200" "SSE output: $(cat "$SSE_FILE" 2>/dev/null)"
 fi
+DELETED_LINE=$(event_line_number "file.deleted")
+if [[ -n "$COMPLETED_LINE" && -n "$DELETED_LINE" ]] && (( DELETED_LINE <= COMPLETED_LINE )); then
+  fail_and_exit "9" "Verify SSE Delete Lifecycle" \
+    "Real-time visibility for delete completion" \
+    "FileMetadataService.publish -> DomainEventFactory.fileEvent -> UserEventPublisher.publish -> SseEmitter.send" \
+    "Ensures clients can react to destructive operations without polling the list endpoint" \
+    "SSE stream for file.deleted" "200" \
+    "Expected file.deleted to appear after the upload lifecycle in this scenario. SSE output: $(cat "$SSE_FILE" 2>/dev/null)"
+fi
 append_step_log "9" "Verify SSE Delete Lifecycle" \
   "Real-time visibility for delete completion" \
   "FileMetadataService.publish -> DomainEventFactory.fileEvent -> UserEventPublisher.publish -> SseEmitter.send" \
   "Ensures clients can react to destructive operations without polling the list endpoint" \
   "SSE stream for file.deleted" "200" "PASSED" \
-  "Observed file.deleted event on the stream"
+  "Observed file.deleted event after the upload lifecycle completed"
 
 echo "[10/10] Optional storage failure drill"
 if [[ "$RUN_FAILURE_DRILL" == "true" ]]; then

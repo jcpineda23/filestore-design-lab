@@ -52,6 +52,9 @@ All Milestone C system events use this shared SSE envelope.
 - frame `id` = `eventId`
 - frame `event` = `eventType`
 - frame `data` = full envelope JSON
+- initial connection bootstrap sends `event: connected` with `data: ok`
+- reconnects are live-only in v1; missed events are not replayed
+- `Last-Event-ID` is not used yet
 
 2. WebSocket
 - Deferred beyond Milestone C.

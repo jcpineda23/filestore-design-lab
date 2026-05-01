@@ -78,6 +78,11 @@ The C1 verifier checks Docker container health, Postgres readiness, MinIO livene
 ./scripts/run_week2_verticals.sh
 ```
 
+7. Run the full MinIO restart-and-recover drill:
+```bash
+./scripts/run_minio_recovery_drill.sh
+```
+
 ## Next Step
 
 Expand SSE behavior with richer event sequencing and add Week 2 vertical storage/realtime runbooks.

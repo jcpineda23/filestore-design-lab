@@ -182,6 +182,9 @@ paths:
       summary: Server-Sent Events stream for current user
       description: |
         Streams user-scoped file lifecycle events over SSE.
+        The server first emits a transport-level `connected` event.
+        Event delivery is live-only in v1: reconnects do not replay missed events,
+        and `Last-Event-ID` is not used yet.
       responses:
         '200':
           description: SSE stream
@@ -190,6 +193,9 @@ paths:
               schema:
                 type: string
                 example: |
+                  event: connected
+                  data: ok
+
                   id: 01JXYZABC123
                   event: file.upload.completed
                   data: {"eventId":"01JXYZABC123"}

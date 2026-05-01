@@ -40,10 +40,13 @@ class EventStreamControllerIntegrationTest {
     void authenticatedUserCanOpenEventStream() throws Exception {
         String token = registerAndLogin("sse@example.com", "secret123");
 
-        mockMvc.perform(get("/api/v1/events/stream")
+        MvcResult result = mockMvc.perform(get("/api/v1/events/stream")
                 .header("Authorization", "Bearer " + token)
                 .accept(MediaType.TEXT_EVENT_STREAM))
-            .andExpect(request().asyncStarted());
+            .andExpect(request().asyncStarted())
+            .andReturn();
+
+        result.getRequest().getAsyncContext().complete();
     }
 
     private String registerAndLogin(String email, String password) throws Exception {
